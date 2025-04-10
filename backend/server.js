@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 require('dotenv').config();
 
 const app = express();
@@ -9,11 +10,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/student-job-tracker';
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Could not connect to MongoDB', err));
+// Connect to MongoDB (using Memory Server for development)
+async function connectDB() {
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      // Use MongoDB Atlas in production
+      const MONGODB_URI = process.env.MONGODB_URI;
+      await mongoose.connect(MONGODB_URI);
+      console.log('Connected to MongoDB Atlas');
+    } else {
+      // Use MongoDB Memory Server for development
+      const mongoServer = await MongoMemoryServer.create();
+      const mongoUri = mongoServer.getUri();
+      await mongoose.connect(mongoUri);
+      console.log('Connected to MongoDB Memory Server');
+    }
+  } catch (err) {
+    console.error('Could not connect to MongoDB', err);
+    process.exit(1);
+  }
+}
+
+connectDB();
 
 // Routes
 app.use('/api/jobs', require('./routes/jobs'));
